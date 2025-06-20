@@ -1,0 +1,34 @@
+/* src/styles.css */
+.side-slider {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 75%;
+  max-width: 300px;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  transition: left 0.3s ease-in-out;
+  z-index: 30;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.side-slider.open {
+  left: 0;
+}
+
+.slider-toggle {
+  position: absolute;
+  top: 50%;
+  right: -40px;
+  background: #3b82f6;
+  padding: 0.5rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .side-slider {
+    width: 80%;
+  }
+}

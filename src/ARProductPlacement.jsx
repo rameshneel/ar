@@ -1,13 +1,14 @@
 import React, { useState, useRef, useCallback } from 'react';
-import 'aframe'; // Import A-Frame
-import 'ar.js'; // Import AR.js
-import { Camera, Home, Move, RotateCcw, ZoomIn, ZoomOut, X, Play, Square, Smartphone, Scan, Eye } from 'lucide-react';
+import 'aframe';
+import 'ar.js';
+import { Camera, ChevronRight, ChevronLeft, RotateCcw, ZoomIn, ZoomOut, X, Smartphone, Scan } from 'lucide-react';
+import './styles.css'; // Import custom CSS
 
 const ARProductPlacement = () => {
   const [isARActive, setIsARActive] = useState(false);
   const [selectedDoor, setSelectedDoor] = useState(null);
   const [placedDoors, setPlacedDoors] = useState([]);
-  const [showDoorSelector, setShowDoorSelector] = useState(false);
+  const [isSliderOpen, setIsSliderOpen] = useState(false);
 
   const sceneRef = useRef(null);
 
@@ -33,34 +34,40 @@ const ARProductPlacement = () => {
 
   const startAR = useCallback(() => {
     setIsARActive(true);
+    setIsSliderOpen(true); // Open slider by default in AR mode
   }, []);
 
   const stopAR = useCallback(() => {
     setIsARActive(false);
     setPlacedDoors([]);
     setSelectedDoor(null);
+    setIsSliderOpen(false);
   }, []);
 
   const selectDoor = (door) => {
     setSelectedDoor(door);
-    setShowDoorSelector(false);
+    setIsSliderOpen(false); // Close slider after selection
   };
 
   const placeDoor = () => {
     if (!selectedDoor) {
-      setShowDoorSelector(true);
+      setIsSliderOpen(true);
       return;
     }
 
     const newDoor = {
       id: Date.now(),
       ...selectedDoor,
-      position: '0 0 0', // Position on marker (centered)
-      scale: '0.5 0.5 0.5', // Initial scale for AR
+      position: '0 0 0', // Place on marker
+      scale: '0.5 0.5 0.5', // Initial scale
       rotation: '0 0 0',
     };
 
     setPlacedDoors([...placedDoors, newDoor]);
+  };
+
+  const toggleSlider = () => {
+    setIsSliderOpen(!isSliderOpen);
   };
 
   return (
@@ -97,8 +104,8 @@ const ARProductPlacement = () => {
 
           <div className="mt-6 text-center text-sm text-blue-200">
             <p>• Point camera at the Hiro marker</p>
-            <p>• Tap to place doors</p>
-            <p>• Use controls to adjust doors</p>
+            <p>• Use side slider to select doors</p>
+            <p>• Tap to place doors in your space</p>
           </div>
         </div>
       ) : (
@@ -118,12 +125,9 @@ const ARProductPlacement = () => {
               ))}
             </a-assets>
 
-            {/* Camera */}
             <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-            {/* Hiro Marker */}
             <a-marker preset="hiro">
-              {/* Placed Doors */}
               {placedDoors.map((door) => (
                 <a-image
                   key={door.id}
@@ -139,17 +143,44 @@ const ARProductPlacement = () => {
             </a-marker>
           </a-scene>
 
-          {/* AR Overlay for Controls */}
+          {/* Side Slider for Door Selection */}
+          <div className={`side-slider ${isSliderOpen ? 'open' : ''}`}>
+            <button
+              onClick={toggleSlider}
+              className="slider-toggle text-white"
+            >
+              {isSliderOpen ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}
+            </button>
+            <div className="p-4">
+              <h3 className="text-lg font-bold text-white mb-4">Choose a Door</h3>
+              <div className="grid grid-cols-1 gap-3">
+                {doorSamples.map((door) => (
+                  <button
+                    key={door.id}
+                    onClick={() => selectDoor(door)}
+                    className={`bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors ${
+                      selectedDoor?.id === door.id ? 'ring-2 ring-blue-500' : ''
+                    }`}
+                  >
+                    <img src={door.image} alt={door.name} className="w-12 h-16 mx-auto mb-2" />
+                    <p className="text-xs font-medium text-center text-black">{door.name}</p>
+                    <p className="text-xs text-blue-600 text-center">{door.price}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* AR Overlay for Placement */}
           <div
             className="absolute inset-0 w-full h-full touch-none z-10"
             onClick={placeDoor}
           >
-            {/* Placement Indicator */}
             {!selectedDoor && (
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center">
                 <Scan size={40} className="mx-auto mb-2 animate-pulse" />
                 <p className="text-sm bg-black bg-opacity-50 px-3 py-1 rounded">
-                  Tap to select a door
+                  Open slider to select a door
                 </p>
               </div>
             )}
@@ -185,22 +216,6 @@ const ARProductPlacement = () => {
 
           {/* Bottom Controls */}
           <div className="absolute bottom-4 left-4 right-4 z-20">
-            {/* Door Selector */}
-            <div className="flex space-x-2 mb-4 overflow-x-auto pb-2">
-              {doorSamples.map((door) => (
-                <button
-                  key={door.id}
-                  onClick={() => selectDoor(door)}
-                  className={`flex-shrink-0 bg-white bg-opacity-90 p-2 rounded-lg ${
-                    selectedDoor?.id === door.id ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                >
-                  <img src={door.image} alt={door.name} className="w-8 h-12" />
-                </button>
-              ))}
-            </div>
-
-            {/* Selected Door Controls */}
             {placedDoors.length > 0 && (
               <div className="bg-black bg-opacity-70 text-white p-4 rounded-xl">
                 <h4 className="text-sm font-semibold mb-2">Door Controls ({placedDoors.length})</h4>
@@ -273,34 +288,6 @@ const ARProductPlacement = () => {
               </div>
             )}
           </div>
-
-          {/* Door Selector Modal */}
-          {showDoorSelector && (
-            <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-30 p-4">
-              <div className="bg-white rounded-xl p-6 max-w-sm w-full">
-                <h3 className="text-lg font-bold text-center mb-4">Choose a Door</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {doorSamples.map((door) => (
-                    <button
-                      key={door.id}
-                      onClick={() => selectDoor(door)}
-                      className="bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <img src={door.image} alt={door.name} className="w-12 h-16 mx-auto mb-2" />
-                      <p className="text-xs font-medium text-center">{door.name}</p>
-                      <p className="text-xs text-blue-600 text-center">{door.price}</p>
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setShowDoorSelector(false)}
-                  className="w-full mt-4 bg-gray-600 text-white py-2 rounded-lg"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
