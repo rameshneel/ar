@@ -2,13 +2,14 @@ import React, { useState, useRef, useCallback } from 'react';
 import 'aframe';
 import 'ar.js';
 import { Camera, ChevronRight, ChevronLeft, RotateCcw, ZoomIn, ZoomOut, X, Smartphone, Scan } from 'lucide-react';
-import './styles.css'; // Import custom CSS
+import './styles.css';
 
 const ARProductPlacement = () => {
   const [isARActive, setIsARActive] = useState(false);
   const [selectedDoor, setSelectedDoor] = useState(null);
   const [placedDoors, setPlacedDoors] = useState([]);
   const [isSliderOpen, setIsSliderOpen] = useState(false);
+  const [cameraFOV, setCameraFOV] = useState(80); // Default field of view for camera
 
   const sceneRef = useRef(null);
 
@@ -34,7 +35,7 @@ const ARProductPlacement = () => {
 
   const startAR = useCallback(() => {
     setIsARActive(true);
-    setIsSliderOpen(true); // Open slider by default in AR mode
+    setIsSliderOpen(true); // Open slider by default
   }, []);
 
   const stopAR = useCallback(() => {
@@ -42,6 +43,7 @@ const ARProductPlacement = () => {
     setPlacedDoors([]);
     setSelectedDoor(null);
     setIsSliderOpen(false);
+    setCameraFOV(80); // Reset FOV
   }, []);
 
   const selectDoor = (door) => {
@@ -58,8 +60,8 @@ const ARProductPlacement = () => {
     const newDoor = {
       id: Date.now(),
       ...selectedDoor,
-      position: '0 0 0', // Place on marker
-      scale: '0.5 0.5 0.5', // Initial scale
+      position: '0 0 0',
+      scale: '0.5 0.5 0.5',
       rotation: '0 0 0',
     };
 
@@ -68,6 +70,14 @@ const ARProductPlacement = () => {
 
   const toggleSlider = () => {
     setIsSliderOpen(!isSliderOpen);
+  };
+
+  const zoomInCamera = () => {
+    setCameraFOV((prev) => Math.max(20, prev - 10)); // Decrease FOV for zoom-in
+  };
+
+  const zoomOutCamera = () => {
+    setCameraFOV((prev) => Math.min(120, prev + 10)); // Increase FOV for zoom-out
   };
 
   return (
@@ -106,6 +116,7 @@ const ARProductPlacement = () => {
             <p>• Point camera at the Hiro marker</p>
             <p>• Use side slider to select doors</p>
             <p>• Tap to place doors in your space</p>
+            <p>• Use zoom buttons to adjust camera</p>
           </div>
         </div>
       ) : (
@@ -125,7 +136,7 @@ const ARProductPlacement = () => {
               ))}
             </a-assets>
 
-            <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+            <a-camera position="0 0 0" look-controls="enabled: false" fov={cameraFOV}></a-camera>
 
             <a-marker preset="hiro">
               {placedDoors.map((door) => (
@@ -138,17 +149,27 @@ const ARProductPlacement = () => {
                   width="1"
                   height="1.4"
                   class="clickable"
+                  opacity="1"
                 ></a-image>
               ))}
+              {selectedDoor && placedDoors.length === 0 && (
+                <a-image
+                  src={`#door-img-${selectedDoor.id}`}
+                  position="0 0 0"
+                  scale="0.5 0.5 0.5"
+                  rotation="0 0 0"
+                  width="1"
+                  height="1.4"
+                  opacity="0.5"
+                  class="preview"
+                ></a-image>
+              )}
             </a-marker>
           </a-scene>
 
-          {/* Side Slider for Door Selection */}
+          {/* Side Slider */}
           <div className={`side-slider ${isSliderOpen ? 'open' : ''}`}>
-            <button
-              onClick={toggleSlider}
-              className="slider-toggle text-white"
-            >
+            <button onClick={toggleSlider} className="slider-toggle text-white">
               {isSliderOpen ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}
             </button>
             <div className="p-4">
@@ -172,10 +193,7 @@ const ARProductPlacement = () => {
           </div>
 
           {/* AR Overlay for Placement */}
-          <div
-            className="absolute inset-0 w-full h-full touch-none z-10"
-            onClick={placeDoor}
-          >
+          <div className="absolute inset-0 w-full h-full touch-none z-10" onClick={placeDoor}>
             {!selectedDoor && (
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center">
                 <Scan size={40} className="mx-auto mb-2 animate-pulse" />
@@ -184,10 +202,9 @@ const ARProductPlacement = () => {
                 </p>
               </div>
             )}
-
             {selectedDoor && placedDoors.length === 0 && (
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center">
-                <div className="animate-bounce">
+                <div className="animate-pulse">
                   <img
                     src={selectedDoor.image}
                     alt=""
@@ -199,6 +216,16 @@ const ARProductPlacement = () => {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Zoom Controls */}
+          <div className="zoom-controls">
+            <button onClick={zoomInCamera} className="zoom-button">
+              <ZoomIn size={20} />
+            </button>
+            <button onClick={zoomOutCamera} className="zoom-button">
+              <ZoomOut size={20} />
+            </button>
           </div>
 
           {/* Top Controls */}
@@ -295,6 +322,304 @@ const ARProductPlacement = () => {
 };
 
 export default ARProductPlacement;
+
+// import React, { useState, useRef, useCallback } from 'react';
+// import 'aframe';
+// import 'ar.js';
+// import { Camera, ChevronRight, ChevronLeft, RotateCcw, ZoomIn, ZoomOut, X, Smartphone, Scan } from 'lucide-react';
+// import './styles.css'; // Import custom CSS
+
+// const ARProductPlacement = () => {
+//   const [isARActive, setIsARActive] = useState(false);
+//   const [selectedDoor, setSelectedDoor] = useState(null);
+//   const [placedDoors, setPlacedDoors] = useState([]);
+//   const [isSliderOpen, setIsSliderOpen] = useState(false);
+
+//   const sceneRef = useRef(null);
+
+//   // Sample door images (dummy data)
+//   const doorSamples = [
+//     {
+//       id: 1,
+//       name: 'Modern White Door',
+//       image:
+//         'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjE0MCIgdmlld0JveD0iMCAwIDEwMCAxNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTQwIiBmaWxsPSIjRkFGQUZBIiBzdHJva2U9IiNEMUQ1REIiIHN0cm9rZS13aWR0aD0iMyIvPgo8cmVjdCB4PSIxMCIgeT0iMTUiIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNSIgZmlsbD0iI0Y5RkFGQiIgc3Ryb2tlPSIjRDFENURCIiBzdHJva2Utd2lkdGg9IjEiLz4KPHJlY3QgeD0iMTAiIHk9IjYwIiB3aWR0aD0iODAiIGhlaWdodD0iMzUiIGZpbGw9IiNGOUZBRkIiIHN0cm9rZT0iI0QxRDVEQiIgc3Ryb2tlLXdpZHRoPSIxIi8+CjxyZWN0IHg9IjEwIiB5PSIxMDUiIHdpZHRoPSI4MCIgaGVpZ2h0PSIyNSIgZmlsbD0iI0Y5RkFGQiIgc3Ryb2tlPSIjRDFENURCIiBzdHJva2Utd2lkdGg9IjEiLz4KPGNpcmNsZSBjeD0iODAiIGN5PSI3NSIgcj0iNCIgZmlsbD0iIzZCNzI4MCIvPgo8L3N2Zz4=',
+//       color: '#FAFAFA',
+//       price: '₹12,000',
+//     },
+//     {
+//       id: 2,
+//       name: 'Wooden Brown Door',
+//       image:
+//         'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjE0MCIgdmlld0JveD0iMCAwIDEwMCAxNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTQwIiBmaWxsPSIjOEI0NTEzIiBzdHJva2U9IiM2NTMzMTAiIHN0cm9rZS13aWR0aD0iMyIvPgo8cmVjdCB4PSIxMCIgeT0iMTUiIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNSIgZmlsbD0iI0E1NjIzOCIgc3Ryb2tlPSIjNjUzMzEwIiBzdHJva2Utd2lkdGg9IjEiLz4KPHJlY3QgeD0iMTAiIHk9IjYwIiB3aWR0aD0iODAiIGhlaWdodD0iMzUiIGZpbGw9IiNBNTYyMzgiIHN0cm9rZT0iIzY1MzMxMCIgc3Ryb2tlLXdpZHRoPSIxIi8+CjxyZWN0IHg9IjEwIiB5PSIxMDUiIHdpZHRoPSI4MCIgaGVpZ2h0PSIyNSIgZmlsbD0iI0E1NjIzOCIgc3Ryb2tlPSIjNjUzMzEwIiBzdHJva2Utd2lkdGg9IjEiLz4KPGNpcmNsZSBjeD0iODAiIGN5PSI3NSIgcj0iNCIgZmlsbD0iI0ZGRDcwMCIvPgo8L3N2Zz4=',
+//       color: '#8B4513',
+//       price: '₹15,000',
+//     },
+//   ];
+
+//   const startAR = useCallback(() => {
+//     setIsARActive(true);
+//     setIsSliderOpen(true); // Open slider by default in AR mode
+//   }, []);
+
+//   const stopAR = useCallback(() => {
+//     setIsARActive(false);
+//     setPlacedDoors([]);
+//     setSelectedDoor(null);
+//     setIsSliderOpen(false);
+//   }, []);
+
+//   const selectDoor = (door) => {
+//     setSelectedDoor(door);
+//     setIsSliderOpen(false); // Close slider after selection
+//   };
+
+//   const placeDoor = () => {
+//     if (!selectedDoor) {
+//       setIsSliderOpen(true);
+//       return;
+//     }
+
+//     const newDoor = {
+//       id: Date.now(),
+//       ...selectedDoor,
+//       position: '0 0 0', // Place on marker
+//       scale: '0.5 0.5 0.5', // Initial scale
+//       rotation: '0 0 0',
+//     };
+
+//     setPlacedDoors([...placedDoors, newDoor]);
+//   };
+
+//   const toggleSlider = () => {
+//     setIsSliderOpen(!isSliderOpen);
+//   };
+
+//   return (
+//     <div className="h-screen bg-gray-900 overflow-hidden">
+//       {!isARActive ? (
+//         // Welcome Screen
+//         <div className="h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 text-white p-6">
+//           <div className="text-center mb-8">
+//             <Smartphone size={80} className="mx-auto mb-4 text-blue-300" />
+//             <h1 className="text-3xl font-bold mb-2">AR Door Preview</h1>
+//             <p className="text-blue-200 text-lg">See how doors look in your space</p>
+//           </div>
+
+//           <div className="grid grid-cols-2 gap-4 mb-8 w-full max-w-md">
+//             {doorSamples.slice(0, 4).map((door) => (
+//               <div
+//                 key={door.id}
+//                 className="bg-white bg-opacity-10 backdrop-blur-lg rounded-lg p-3 text-center"
+//               >
+//                 <img src={door.image} alt={door.name} className="w-12 h-16 mx-auto mb-2" />
+//                 <p className="text-xs font-medium">{door.name}</p>
+//                 <p className="text-xs text-blue-200">{door.price}</p>
+//               </div>
+//             ))}
+//           </div>
+
+//           <button
+//             onClick={startAR}
+//             className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold flex items-center space-x-3 shadow-lg hover:shadow-xl transition-all"
+//           >
+//             <Camera size={24} />
+//             <span>Start AR Experience</span>
+//           </button>
+
+//           <div className="mt-6 text-center text-sm text-blue-200">
+//             <p>• Point camera at the Hiro marker</p>
+//             <p>• Use side slider to select doors</p>
+//             <p>• Tap to place doors in your space</p>
+//           </div>
+//         </div>
+//       ) : (
+//         // AR View
+//         <div className="relative h-full">
+//           {/* A-Frame Scene */}
+//           <a-scene
+//             ref={sceneRef}
+//             vr-mode-ui="enabled: false"
+//             arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 720;"
+//             embedded
+//             style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+//           >
+//             <a-assets>
+//               {doorSamples.map((door) => (
+//                 <img key={door.id} id={`door-img-${door.id}`} src={door.image} />
+//               ))}
+//             </a-assets>
+
+//             <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+//             <a-marker preset="hiro">
+//               {placedDoors.map((door) => (
+//                 <a-image
+//                   key={door.id}
+//                   src={`#door-img-${door.id}`}
+//                   position={door.position}
+//                   scale={door.scale}
+//                   rotation={door.rotation}
+//                   width="1"
+//                   height="1.4"
+//                   class="clickable"
+//                 ></a-image>
+//               ))}
+//             </a-marker>
+//           </a-scene>
+
+//           {/* Side Slider for Door Selection */}
+//           <div className={`side-slider ${isSliderOpen ? 'open' : ''}`}>
+//             <button
+//               onClick={toggleSlider}
+//               className="slider-toggle text-white"
+//             >
+//               {isSliderOpen ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}
+//             </button>
+//             <div className="p-4">
+//               <h3 className="text-lg font-bold text-white mb-4">Choose a Door</h3>
+//               <div className="grid grid-cols-1 gap-3">
+//                 {doorSamples.map((door) => (
+//                   <button
+//                     key={door.id}
+//                     onClick={() => selectDoor(door)}
+//                     className={`bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors ${
+//                       selectedDoor?.id === door.id ? 'ring-2 ring-blue-500' : ''
+//                     }`}
+//                   >
+//                     <img src={door.image} alt={door.name} className="w-12 h-16 mx-auto mb-2" />
+//                     <p className="text-xs font-medium text-center text-black">{door.name}</p>
+//                     <p className="text-xs text-blue-600 text-center">{door.price}</p>
+//                   </button>
+//                 ))}
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* AR Overlay for Placement */}
+//           <div
+//             className="absolute inset-0 w-full h-full touch-none z-10"
+//             onClick={placeDoor}
+//           >
+//             {!selectedDoor && (
+//               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center">
+//                 <Scan size={40} className="mx-auto mb-2 animate-pulse" />
+//                 <p className="text-sm bg-black bg-opacity-50 px-3 py-1 rounded">
+//                   Open slider to select a door
+//                 </p>
+//               </div>
+//             )}
+
+//             {selectedDoor && placedDoors.length === 0 && (
+//               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center">
+//                 <div className="animate-bounce">
+//                   <img
+//                     src={selectedDoor.image}
+//                     alt=""
+//                     className="w-16 h-20 mx-auto mb-2 opacity-70"
+//                   />
+//                 </div>
+//                 <p className="text-sm bg-black bg-opacity-50 px-3 py-1 rounded">
+//                   Tap to place door on marker
+//                 </p>
+//               </div>
+//             )}
+//           </div>
+
+//           {/* Top Controls */}
+//           <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-20">
+//             <div className="bg-black bg-opacity-50 text-white px-3 py-2 rounded-full text-sm">
+//               {selectedDoor ? selectedDoor.name : 'No door selected'}
+//             </div>
+//             <button
+//               onClick={stopAR}
+//               className="bg-red-600 text-white p-3 rounded-full shadow-lg"
+//             >
+//               <X size={20} />
+//             </button>
+//           </div>
+
+//           {/* Bottom Controls */}
+//           <div className="absolute bottom-4 left-4 right-4 z-20">
+//             {placedDoors.length > 0 && (
+//               <div className="bg-black bg-opacity-70 text-white p-4 rounded-xl">
+//                 <h4 className="text-sm font-semibold mb-2">Door Controls ({placedDoors.length})</h4>
+//                 <div className="space-y-2">
+//                   {placedDoors.slice(-2).map((door) => (
+//                     <div
+//                       key={door.id}
+//                       className="flex items-center justify-between bg-gray-700 p-2 rounded"
+//                     >
+//                       <span className="text-xs truncate flex-1">{door.name}</span>
+//                       <div className="flex space-x-1 ml-2">
+//                         <button
+//                           onClick={() => {
+//                             const scale = parseFloat(door.scale.split(' ')[0]) + 0.1;
+//                             setPlacedDoors(
+//                               placedDoors.map((d) =>
+//                                 d.id === door.id
+//                                   ? { ...d, scale: `${scale} ${scale} ${scale}` }
+//                                   : d
+//                               )
+//                             );
+//                           }}
+//                           className="bg-blue-600 p-1 rounded"
+//                         >
+//                           <ZoomIn size={12} />
+//                         </button>
+//                         <button
+//                           onClick={() => {
+//                             const scale = Math.max(
+//                               0.1,
+//                               parseFloat(door.scale.split(' ')[0]) - 0.1
+//                             );
+//                             setPlacedDoors(
+//                               placedDoors.map((d) =>
+//                                 d.id === door.id
+//                                   ? { ...d, scale: `${scale} ${scale} ${scale}` }
+//                                   : d
+//                               )
+//                             );
+//                           }}
+//                           className="bg-blue-600 p-1 rounded"
+//                         >
+//                           <ZoomOut size={12} />
+//                         </button>
+//                         <button
+//                           onClick={() => {
+//                             const rotation = parseFloat(door.rotation.split(' ')[1]) + 90;
+//                             setPlacedDoors(
+//                               placedDoors.map((d) =>
+//                                 d.id === door.id
+//                                   ? { ...d, rotation: `0 ${rotation} 0` }
+//                                   : d
+//                               )
+//                             );
+//                           }}
+//                           className="bg-green-600 p-1 rounded"
+//                         >
+//                           <RotateCcw size={12} />
+//                         </button>
+//                         <button
+//                           onClick={() => setPlacedDoors(placedDoors.filter((d) => d.id !== door.id))}
+//                           className="bg-red-600 p-1 rounded"
+//                         >
+//                           <X size={12} />
+//                         </button>
+//                       </div>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+//             )}
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default ARProductPlacement;
 
 // import React, { useState, useRef, useCallback, useEffect } from 'react';
 // import { Camera, ShoppingCart, Package, Star, IndianRupee, Plus, X, Edit2, Save, Trash2, Eye, Move, RotateCcw, ZoomIn, ZoomOut, Scan } from 'lucide-react';
