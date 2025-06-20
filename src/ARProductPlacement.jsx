@@ -1,17 +1,15 @@
 import React, { useState, useRef, useCallback } from 'react';
-import Webcam from 'react-webcam'; // Import react-webcam
+import 'aframe'; // Import A-Frame
+import 'ar.js'; // Import AR.js
 import { Camera, Home, Move, RotateCcw, ZoomIn, ZoomOut, X, Play, Square, Smartphone, Scan, Eye } from 'lucide-react';
 
 const ARProductPlacement = () => {
   const [isARActive, setIsARActive] = useState(false);
   const [selectedDoor, setSelectedDoor] = useState(null);
   const [placedDoors, setPlacedDoors] = useState([]);
-  const [draggedDoor, setDraggedDoor] = useState(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [showDoorSelector, setShowDoorSelector] = useState(false);
 
-  const webcamRef = useRef(null);
-  const containerRef = useRef(null);
+  const sceneRef = useRef(null);
 
   // Sample door images (dummy data)
   const doorSamples = [
@@ -33,17 +31,14 @@ const ARProductPlacement = () => {
     },
   ];
 
-  const startCamera = useCallback(() => {
+  const startAR = useCallback(() => {
     setIsARActive(true);
   }, []);
 
-  const stopCamera = useCallback(() => {
+  const stopAR = useCallback(() => {
     setIsARActive(false);
     setPlacedDoors([]);
     setSelectedDoor(null);
-    if (webcamRef.current) {
-      webcamRef.current.stop();
-    }
   }, []);
 
   const selectDoor = (door) => {
@@ -51,93 +46,21 @@ const ARProductPlacement = () => {
     setShowDoorSelector(false);
   };
 
-  const placeDoor = (e) => {
+  const placeDoor = () => {
     if (!selectedDoor) {
       setShowDoorSelector(true);
       return;
     }
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = e.touches ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = e.touches ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-
     const newDoor = {
       id: Date.now(),
       ...selectedDoor,
-      x: x - 50, // Center the door
-      y: y - 70,
-      scale: 1,
-      rotation: 0,
-      width: 100,
-      height: 140,
+      position: '0 0 0', // Position on marker (centered)
+      scale: '0.5 0.5 0.5', // Initial scale for AR
+      rotation: '0 0 0',
     };
 
     setPlacedDoors([...placedDoors, newDoor]);
-  };
-
-  const handleTouchStart = (e, doorId) => {
-    e.preventDefault();
-    const door = placedDoors.find((d) => d.id === doorId);
-    const rect = containerRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-
-    setDraggedDoor(doorId);
-    setDragOffset({
-      x: touch.clientX - rect.left - door.x,
-      y: touch.clientY - rect.top - door.y,
-    });
-  };
-
-  const handleTouchMove = (e) => {
-    if (!draggedDoor) return;
-    e.preventDefault();
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left - dragOffset.x;
-    const y = touch.clientY - rect.top - dragOffset.y;
-
-    setPlacedDoors(
-      placedDoors.map((door) => (door.id === draggedDoor ? { ...door, x, y } : door))
-    );
-  };
-
-  const handleTouchEnd = () => {
-    setDraggedDoor(null);
-    setDragOffset({ x: 0, y: 0 });
-  };
-
-  const scaleDoor = (doorId, scaleChange) => {
-    setPlacedDoors(
-      placedDoors.map((door) =>
-        door.id === doorId
-          ? {
-              ...door,
-              scale: Math.max(0.5, Math.min(2, door.scale + scaleChange)),
-              width: 100 * Math.max(0.5, Math.min(2, door.scale + scaleChange)),
-              height: 140 * Math.max(0.5, Math.min(2, door.scale + scaleChange)),
-            }
-          : door
-      )
-    );
-  };
-
-  const rotateDoor = (doorId) => {
-    setPlacedDoors(
-      placedDoors.map((door) =>
-        door.id === doorId ? { ...door, rotation: (door.rotation + 90) % 360 } : door
-      )
-    );
-  };
-
-  const removeDoor = (doorId) => {
-    setPlacedDoors(placedDoors.filter((door) => door.id !== doorId));
-  };
-
-  const onWebcamError = (error) => {
-    console.error('Webcam error:', error);
-    alert('Failed to access camera. Please ensure camera permissions are granted.');
-    setIsARActive(false);
   };
 
   return (
@@ -165,7 +88,7 @@ const ARProductPlacement = () => {
           </div>
 
           <button
-            onClick={startCamera}
+            onClick={startAR}
             className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold flex items-center space-x-3 shadow-lg hover:shadow-xl transition-all"
           >
             <Camera size={24} />
@@ -173,79 +96,54 @@ const ARProductPlacement = () => {
           </button>
 
           <div className="mt-6 text-center text-sm text-blue-200">
-            <p>• Point camera at your space</p>
+            <p>• Point camera at the Hiro marker</p>
             <p>• Tap to place doors</p>
-            <p>• Drag to move, pinch to resize</p>
+            <p>• Use controls to adjust doors</p>
           </div>
         </div>
       ) : (
         // AR View
         <div className="relative h-full">
-          {/* Camera Feed */}
-          <Webcam
-            audio={false}
-            ref={webcamRef}
-            screenshotFormat="image/jpeg"
-            videoConstraints={{
-              facingMode: 'environment',
-              width: { ideal: window.innerWidth },
-              height: { ideal: window.innerHeight },
-            }}
-            onUserMediaError={onWebcamError}
-            className="absolute inset-0 w-full h-full object-cover z-0"
-          />
+          {/* A-Frame Scene */}
+          <a-scene
+            ref={sceneRef}
+            vr-mode-ui="enabled: false"
+            arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 720;"
+            embedded
+            style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+          >
+            <a-assets>
+              {doorSamples.map((door) => (
+                <img key={door.id} id={`door-img-${door.id}`} src={door.image} />
+              ))}
+            </a-assets>
 
-          {/* AR Overlay */}
+            {/* Camera */}
+            <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+            {/* Hiro Marker */}
+            <a-marker preset="hiro">
+              {/* Placed Doors */}
+              {placedDoors.map((door) => (
+                <a-image
+                  key={door.id}
+                  src={`#door-img-${door.id}`}
+                  position={door.position}
+                  scale={door.scale}
+                  rotation={door.rotation}
+                  width="1"
+                  height="1.4"
+                  class="clickable"
+                ></a-image>
+              ))}
+            </a-marker>
+          </a-scene>
+
+          {/* AR Overlay for Controls */}
           <div
-            ref={containerRef}
             className="absolute inset-0 w-full h-full touch-none z-10"
             onClick={placeDoor}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
           >
-            {/* AR Grid (subtle) */}
-            <div className="absolute inset-0 opacity-20">
-              <svg className="w-full h-full">
-                <defs>
-                  <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
-                    <path d="M 50 0 L 0 0 0 50" fill="none" stroke="white" strokeWidth="1" />
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid)" />
-              </svg>
-            </div>
-
-            {/* Placed Doors */}
-            {placedDoors.map((door) => (
-              <div
-                key={door.id}
-                className="absolute select-none"
-                style={{
-                  left: door.x,
-                  top: door.y,
-                  width: door.width,
-                  height: door.height,
-                  transform: `rotate(${door.rotation}deg)`,
-                  filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
-                }}
-                onTouchStart={(e) => handleTouchStart(e, door.id)}
-              >
-                <img
-                  src={door.image}
-                  alt={door.name}
-                  className="w-full h-full object-contain opacity-90"
-                  draggable={false}
-                />
-                {/* Selection Border */}
-                <div className="absolute inset-0 border-2 border-white border-dashed opacity-50 rounded-lg"></div>
-
-                {/* Door Info */}
-                <div className="absolute -top-8 left-0 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
-                  {door.name}
-                </div>
-              </div>
-            ))}
-
             {/* Placement Indicator */}
             {!selectedDoor && (
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center">
@@ -266,7 +164,7 @@ const ARProductPlacement = () => {
                   />
                 </div>
                 <p className="text-sm bg-black bg-opacity-50 px-3 py-1 rounded">
-                  Tap anywhere to place door
+                  Tap to place door on marker
                 </p>
               </div>
             )}
@@ -278,7 +176,7 @@ const ARProductPlacement = () => {
               {selectedDoor ? selectedDoor.name : 'No door selected'}
             </div>
             <button
-              onClick={stopCamera}
+              onClick={stopAR}
               className="bg-red-600 text-white p-3 rounded-full shadow-lg"
             >
               <X size={20} />
@@ -315,25 +213,55 @@ const ARProductPlacement = () => {
                       <span className="text-xs truncate flex-1">{door.name}</span>
                       <div className="flex space-x-1 ml-2">
                         <button
-                          onClick={() => scaleDoor(door.id, 0.1)}
+                          onClick={() => {
+                            const scale = parseFloat(door.scale.split(' ')[0]) + 0.1;
+                            setPlacedDoors(
+                              placedDoors.map((d) =>
+                                d.id === door.id
+                                  ? { ...d, scale: `${scale} ${scale} ${scale}` }
+                                  : d
+                              )
+                            );
+                          }}
                           className="bg-blue-600 p-1 rounded"
                         >
                           <ZoomIn size={12} />
                         </button>
                         <button
-                          onClick={() => scaleDoor(door.id, -0.1)}
+                          onClick={() => {
+                            const scale = Math.max(
+                              0.1,
+                              parseFloat(door.scale.split(' ')[0]) - 0.1
+                            );
+                            setPlacedDoors(
+                              placedDoors.map((d) =>
+                                d.id === door.id
+                                  ? { ...d, scale: `${scale} ${scale} ${scale}` }
+                                  : d
+                              )
+                            );
+                          }}
                           className="bg-blue-600 p-1 rounded"
                         >
                           <ZoomOut size={12} />
                         </button>
                         <button
-                          onClick={() => rotateDoor(door.id)}
+                          onClick={() => {
+                            const rotation = parseFloat(door.rotation.split(' ')[1]) + 90;
+                            setPlacedDoors(
+                              placedDoors.map((d) =>
+                                d.id === door.id
+                                  ? { ...d, rotation: `0 ${rotation} 0` }
+                                  : d
+                              )
+                            );
+                          }}
                           className="bg-green-600 p-1 rounded"
                         >
                           <RotateCcw size={12} />
                         </button>
                         <button
-                          onClick={() => removeDoor(door.id)}
+                          onClick={() => setPlacedDoors(placedDoors.filter((d) => d.id !== door.id))}
                           className="bg-red-600 p-1 rounded"
                         >
                           <X size={12} />
